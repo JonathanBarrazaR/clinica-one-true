@@ -1,28 +1,27 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays } from "lucide-react";
-
-const citasExistentes = [
-  { id: 1, paciente: "María González", medico: "Dr. Pérez", fecha: "2026-04-13", hora: "09:00", estado: "confirmada" },
-  { id: 2, paciente: "Juan Rodríguez", medico: "Dra. López", fecha: "2026-04-13", hora: "10:30", estado: "pendiente" },
-  { id: 3, paciente: "Ana Martínez", medico: "Dr. Silva", fecha: "2026-04-14", hora: "11:00", estado: "confirmada" },
-];
+import { CalendarDays, Trash2 } from "lucide-react";
+import { useAppStore } from "@/stores/appStore";
 
 const MesonCitas = () => {
-  const [paciente, setPaciente] = useState("");
+  const { citas, pacientes, addCita, deleteCita } = useAppStore();
+  const [pacienteId, setPacienteId] = useState("");
   const [medico, setMedico] = useState("");
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setPaciente(""); setMedico(""); setFecha(""); setHora("");
+    const pac = pacientes.find((p) => p.id.toString() === pacienteId);
+    if (!pac) return;
+    addCita({ paciente: pac.nombre, medico, fecha, hora, estado: "pendiente" });
+    setPacienteId(""); setMedico(""); setFecha(""); setHora("");
   };
 
   return (
@@ -35,16 +34,26 @@ const MesonCitas = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2"><Label>Paciente</Label><Input value={paciente} onChange={(e) => setPaciente(e.target.value)} placeholder="Nombre del paciente" required /></div>
+              <div className="space-y-2">
+                <Label>Paciente</Label>
+                <Select value={pacienteId} onValueChange={setPacienteId}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar paciente" /></SelectTrigger>
+                  <SelectContent>
+                    {pacientes.map((p) => (
+                      <SelectItem key={p.id} value={p.id.toString()}>{p.nombre} - {p.rut}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label>Médico</Label>
                 <Select value={medico} onValueChange={setMedico}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar médico" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="dr-perez">Dr. Pérez - Cardiología</SelectItem>
-                    <SelectItem value="dra-lopez">Dra. López - Pediatría</SelectItem>
-                    <SelectItem value="dr-silva">Dr. Silva - Traumatología</SelectItem>
-                    <SelectItem value="dra-ruiz">Dra. Ruiz - Dermatología</SelectItem>
+                    <SelectItem value="Dr. Pérez">Dr. Pérez - Cardiología</SelectItem>
+                    <SelectItem value="Dra. López">Dra. López - Pediatría</SelectItem>
+                    <SelectItem value="Dr. Silva">Dr. Silva - Traumatología</SelectItem>
+                    <SelectItem value="Dra. Ruiz">Dra. Ruiz - Dermatología</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -57,17 +66,22 @@ const MesonCitas = () => {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Citas Próximas</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Citas Programadas ({citas.length})</CardTitle></CardHeader>
           <CardContent>
             <Table>
-              <TableHeader><TableRow><TableHead>Paciente</TableHead><TableHead>Médico</TableHead><TableHead>Fecha</TableHead><TableHead>Hora</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow><TableHead>Paciente</TableHead><TableHead>Médico</TableHead><TableHead>Fecha</TableHead><TableHead>Hora</TableHead><TableHead>Estado</TableHead><TableHead className="w-16"></TableHead></TableRow>
+              </TableHeader>
               <TableBody>
-                {citasExistentes.map((c) => (
+                {citas.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.paciente}</TableCell><TableCell>{c.medico}</TableCell>
                     <TableCell>{c.fecha}</TableCell><TableCell>{c.hora}</TableCell>
                     <TableCell>
                       <Badge className={c.estado === "confirmada" ? "bg-success/20 text-success border-0" : "bg-warning/20 text-warning border-0"}>{c.estado}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => deleteCita(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </TableCell>
                   </TableRow>
                 ))}

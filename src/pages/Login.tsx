@@ -68,18 +68,15 @@ const Login = () => {
               <form onSubmit={handleLogin} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Correo electrónico</Label>
-                  <Input id="login-email" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="admin@cliniaone.com" required />
+                  <Input id="login-email" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="correo@ejemplo.com" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Contraseña</Label>
-                  <Input id="login-password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="admin123" required />
+                  <Input id="login-password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••" required />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Ingresando..." : "Iniciar Sesión"}
                 </Button>
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  Demo: admin@cliniaone.com / admin123 — meson@cliniaone.com / meson123
-                </p>
               </form>
             </TabsContent>
             <TabsContent value="signup">
