@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, UserCog, FileBarChart, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, UserCog, FileBarChart, Settings, LogOut, Clock } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -19,6 +19,7 @@ const items = [
   { title: "Pacientes", url: "/admin/pacientes", icon: Users },
   { title: "Médicos", url: "/admin/medicos", icon: UserCog },
   { title: "Reportes", url: "/admin/reportes", icon: FileBarChart },
+  { title: "Sesiones", url: "/admin/sesiones", icon: Clock },
   { title: "Sistema", url: "/admin/sistema", icon: Settings },
 ];
 

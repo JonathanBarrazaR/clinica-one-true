@@ -6,22 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import NuevoMedicoDialog from "@/components/admin/NuevoMedicoDialog";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface Medico {
   id: number; nombre: string; especialidad: string; email: string; estado: string;
 }
 
-const initialMedicos: Medico[] = [
-  { id: 1, nombre: "Dr. Roberto Pérez", especialidad: "Cardiología", email: "rperez@cliniaone.com", estado: "activo" },
-  { id: 2, nombre: "Dra. Laura López", especialidad: "Pediatría", email: "llopez@cliniaone.com", estado: "activo" },
-  { id: 3, nombre: "Dr. Miguel Silva", especialidad: "Traumatología", email: "msilva@cliniaone.com", estado: "inactivo" },
-  { id: 4, nombre: "Dra. Carmen Ruiz", especialidad: "Dermatología", email: "cruiz@cliniaone.com", estado: "activo" },
-];
-
 const AdminMedicos = () => {
-  const [medicos, setMedicos] = useState<Medico[]>(initialMedicos);
+  const [medicos, setMedicos] = useState<Medico[]>([]);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [toDelete, setToDelete] = useState<Medico | null>(null);
 
   const filtered = medicos.filter((m) =>
     m.nombre.toLowerCase().includes(search.toLowerCase()) || m.especialidad.toLowerCase().includes(search.toLowerCase())
@@ -30,8 +25,6 @@ const AdminMedicos = () => {
   const handleAdd = (data: { nombre: string; especialidad: string; email: string }) => {
     setMedicos([...medicos, { id: Date.now(), estado: "activo", ...data }]);
   };
-
-  const handleDelete = (id: number) => setMedicos(medicos.filter((m) => m.id !== id));
 
   return (
     <div className="space-y-6">
@@ -53,28 +46,41 @@ const AdminMedicos = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.nombre}</TableCell>
-                  <TableCell>{m.especialidad}</TableCell><TableCell>{m.email}</TableCell>
-                  <TableCell>
-                    <Badge className={m.estado === "activo" ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0"}>
-                      {m.estado === "activo" ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No hay médicos registrados.</TableCell></TableRow>
+              ) : (
+                filtered.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.nombre}</TableCell>
+                    <TableCell>{m.especialidad}</TableCell><TableCell>{m.email}</TableCell>
+                    <TableCell>
+                      <Badge className={m.estado === "activo" ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0"}>
+                        {m.estado === "activo" ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setToDelete(m)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
       <NuevoMedicoDialog open={dialogOpen} onOpenChange={setDialogOpen} onSubmit={handleAdd} />
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        itemName={toDelete?.nombre}
+        onConfirm={() => {
+          if (toDelete) setMedicos(medicos.filter((m) => m.id !== toDelete.id));
+          setToDelete(null);
+        }}
+      />
     </div>
   );
 };

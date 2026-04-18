@@ -14,6 +14,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPacientes from "./pages/admin/Pacientes";
 import AdminMedicos from "./pages/admin/Medicos";
 import Reportes from "./pages/admin/Reportes";
+import Sesiones from "./pages/admin/Sesiones";
 import Sistema from "./pages/admin/Sistema";
 import MesonInicio from "./pages/meson/Inicio";
 import MesonPacientes from "./pages/meson/Pacientes";
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="pacientes" element={<AdminPacientes />} />
               <Route path="medicos" element={<AdminMedicos />} />
               <Route path="reportes" element={<Reportes />} />
+              <Route path="sesiones" element={<Sesiones />} />
               <Route path="sistema" element={<Sistema />} />
             </Route>
             <Route path="/meson" element={<ProtectedRoute requiredRole="meson"><MesonLayout /></ProtectedRoute>}>
