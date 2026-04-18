@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Trash2 } from "lucide-react";
-import { useAppStore } from "@/stores/appStore";
+import { useAppStore, Cita } from "@/stores/appStore";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 const MesonCitas = () => {
   const { citas, pacientes, addCita, deleteCita } = useAppStore();
@@ -15,6 +16,7 @@ const MesonCitas = () => {
   const [medico, setMedico] = useState("");
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
+  const [toDelete, setToDelete] = useState<Cita | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,29 +41,25 @@ const MesonCitas = () => {
                 <Select value={pacienteId} onValueChange={setPacienteId}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar paciente" /></SelectTrigger>
                   <SelectContent>
-                    {pacientes.map((p) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>{p.nombre} - {p.rut}</SelectItem>
-                    ))}
+                    {pacientes.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">Registra primero un paciente</div>
+                    ) : (
+                      pacientes.map((p) => (
+                        <SelectItem key={p.id} value={p.id.toString()}>{p.nombre} - {p.rut}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Médico</Label>
-                <Select value={medico} onValueChange={setMedico}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar médico" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Dr. Pérez">Dr. Pérez - Cardiología</SelectItem>
-                    <SelectItem value="Dra. López">Dra. López - Pediatría</SelectItem>
-                    <SelectItem value="Dr. Silva">Dr. Silva - Traumatología</SelectItem>
-                    <SelectItem value="Dra. Ruiz">Dra. Ruiz - Dermatología</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input placeholder="Nombre del médico" value={medico} onChange={(e) => setMedico(e.target.value)} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required /></div>
                 <div className="space-y-2"><Label>Hora</Label><Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} required /></div>
               </div>
-              <Button type="submit" className="w-full">Agendar Cita</Button>
+              <Button type="submit" className="w-full" disabled={!pacienteId}>Agendar Cita</Button>
             </form>
           </CardContent>
         </Card>
@@ -73,23 +71,36 @@ const MesonCitas = () => {
                 <TableRow><TableHead>Paciente</TableHead><TableHead>Médico</TableHead><TableHead>Fecha</TableHead><TableHead>Hora</TableHead><TableHead>Estado</TableHead><TableHead className="w-16"></TableHead></TableRow>
               </TableHeader>
               <TableBody>
-                {citas.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.paciente}</TableCell><TableCell>{c.medico}</TableCell>
-                    <TableCell>{c.fecha}</TableCell><TableCell>{c.hora}</TableCell>
-                    <TableCell>
-                      <Badge className={c.estado === "confirmada" ? "bg-success/20 text-success border-0" : "bg-warning/20 text-warning border-0"}>{c.estado}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => deleteCita(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {citas.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sin citas programadas.</TableCell></TableRow>
+                ) : (
+                  citas.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium">{c.paciente}</TableCell><TableCell>{c.medico}</TableCell>
+                      <TableCell>{c.fecha}</TableCell><TableCell>{c.hora}</TableCell>
+                      <TableCell>
+                        <Badge className={c.estado === "confirmada" ? "bg-success/20 text-success border-0" : "bg-warning/20 text-warning border-0"}>{c.estado}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => setToDelete(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        itemName={toDelete ? `la cita de ${toDelete.paciente}` : undefined}
+        onConfirm={() => {
+          if (toDelete) deleteCita(toDelete.id);
+          setToDelete(null);
+        }}
+      />
     </div>
   );
 };

@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, HeartPulse, Trash2 } from "lucide-react";
-import { useAppStore } from "@/stores/appStore";
+import { useAppStore, Paciente } from "@/stores/appStore";
 import NuevoPacienteDialog from "@/components/admin/NuevoPacienteDialog";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 const MesonPacientes = () => {
   const { pacientes, deletePaciente } = useAppStore();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [toDelete, setToDelete] = useState<Paciente | null>(null);
   const navigate = useNavigate();
 
   const filtered = pacientes.filter(
@@ -40,36 +42,49 @@ const MesonPacientes = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.nombre}</TableCell>
-                  <TableCell>{p.rut}</TableCell>
-                  <TableCell>{p.telefono}</TableCell>
-                  <TableCell>{p.ultimaVisita}</TableCell>
-                  <TableCell>
-                    {p.triageResult ? (
-                      <Badge className="bg-info/20 text-info border-0">{p.triageResult.label}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Sin triage</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" title="Iniciar Triage" onClick={() => navigate(`/meson/triage?pacienteId=${p.id}`)}>
-                        <HeartPulse className="h-4 w-4 text-primary" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deletePaciente(p.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No hay pacientes registrados.</TableCell></TableRow>
+              ) : (
+                filtered.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.nombre}</TableCell>
+                    <TableCell>{p.rut}</TableCell>
+                    <TableCell>{p.telefono}</TableCell>
+                    <TableCell>{p.ultimaVisita}</TableCell>
+                    <TableCell>
+                      {p.triageResult ? (
+                        <Badge className="bg-info/20 text-info border-0">{p.triageResult.label}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Sin triage</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" title="Iniciar Triage" onClick={() => navigate(`/meson/triage?pacienteId=${p.id}`)}>
+                          <HeartPulse className="h-4 w-4 text-primary" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setToDelete(p)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
       <NuevoPacienteDialog open={dialogOpen} onOpenChange={setDialogOpen} onSubmit={() => {}} />
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        itemName={toDelete?.nombre}
+        onConfirm={() => {
+          if (toDelete) deletePaciente(toDelete.id);
+          setToDelete(null);
+        }}
+      />
     </div>
   );
 };

@@ -5,12 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Trash2 } from "lucide-react";
 import NuevoPacienteDialog from "@/components/admin/NuevoPacienteDialog";
-import { useAppStore } from "@/stores/appStore";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { useAppStore, Paciente } from "@/stores/appStore";
 
 const AdminPacientes = () => {
   const { pacientes, deletePaciente } = useAppStore();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [toDelete, setToDelete] = useState<Paciente | null>(null);
 
   const filtered = pacientes.filter((p) =>
     p.nombre.toLowerCase().includes(search.toLowerCase()) || p.rut.includes(search)
@@ -36,20 +38,33 @@ const AdminPacientes = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.nombre}</TableCell>
-                  <TableCell>{p.rut}</TableCell><TableCell>{p.telefono}</TableCell><TableCell>{p.email}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => deletePaciente(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No hay pacientes registrados.</TableCell></TableRow>
+              ) : (
+                filtered.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.nombre}</TableCell>
+                    <TableCell>{p.rut}</TableCell><TableCell>{p.telefono}</TableCell><TableCell>{p.email}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => setToDelete(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
       <NuevoPacienteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        itemName={toDelete?.nombre}
+        onConfirm={() => {
+          if (toDelete) deletePaciente(toDelete.id);
+          setToDelete(null);
+        }}
+      />
     </div>
   );
 };
