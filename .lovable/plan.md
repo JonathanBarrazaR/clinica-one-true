@@ -1,100 +1,95 @@
 
 
-# Plan: Replicar CliniaONE - Sistema de Gestión Medica
+# Plan: Limpieza de datos mock + Tracking de sesiones + Confirmaciones
 
-## Resumen
+## Contexto
+- Usuario tiene su propia BD Supabase (`clinica_one`) corriendo en local — NO usa Lovable Cloud.
+- El `public schema` está vacío, así que entrego **archivo SQL listo para ejecutar** en su Supabase.
+- iXRAY (competencia): centro radiológico con módulos de pacientes, médicos, órdenes, imágenes/informes DICOM, reportes diarios, portales paciente/médico. Inspiración para campos extra (RUN como ID, sucursales, prestaciones, convenios).
 
-El repositorio contiene **CliniaONE**, un sistema de gestion medica con tema oscuro (teal/dark blue), autenticacion con Supabase, roles (admin y meson), y multiples paneles para gestion de pacientes, medicos, citas, ordenes, triage y reportes.
+## 1. Limpiar datos de muestra
+Vaciar arrays iniciales en `src/stores/appStore.ts`:
+- `pacientes: []`, `ordenes: []`, `citas: []`
+También quitar mock arrays de:
+- `Sistema.tsx` (tabla `users`)
+- `Dashboard.tsx` (`recentOrders`, `chartData` → calcular desde store o mostrar vacío)
+- `Reportes.tsx` (datos hardcoded)
+- `meson/Inicio.tsx`, `meson/Medicos.tsx` (si tienen mock)
+- `admin/Medicos.tsx` (`initialMedicos` → array vacío)
 
-## Estructura del proyecto
+## 2. Tracking de sesiones (tiempo_online / hora_desconexion)
+
+**Frontend** (`useAuth.tsx` + nuevo store `sessionStore.ts`):
+- Al `signIn` exitoso: registrar `{ userId, email, role, tiempo_online: now() }` en store + localStorage.
+- Al `signOut` (o cierre de pestaña vía `beforeunload`): setear `hora_desconexion: now()`, calcular duración.
+- Mantener historial de sesiones por usuario.
+
+**Nueva página** en panel admin: `Sesiones.tsx` (ruta `/admin/sesiones`)
+- Tabla: Usuario | Rol | Conexión | Desconexión | Duración | Estado (online/offline).
+- Agregar item en `AdminSidebar` (icono `Clock`).
+
+## 3. Esquema SQL para tu Supabase (`clinica_one`)
+Crear archivo `supabase/schema.sql` con CREATE TABLE statements para que ejecutes en tu Supabase SQL Editor:
 
 ```text
-src/
-  hooks/useAuth.tsx           -- AuthProvider con roles
-  components/
-    ProtectedRoute.tsx        -- Proteccion por rol
-    layout/
-      AdminLayout.tsx         -- Layout admin con sidebar
-      AdminSidebar.tsx        -- Sidebar admin
-      MesonLayout.tsx         -- Layout meson con header
-      MesonSidebar.tsx        -- Sidebar meson
-    admin/
-      NuevaOrdenDialog.tsx    -- Dialog crear orden
-      NuevoMedicoDialog.tsx   -- Dialog crear medico
-      NuevoPacienteDialog.tsx -- Dialog crear paciente
-  pages/
-    Index.tsx                 -- Landing con links a paneles
-    Login.tsx                 -- Login/Signup con tabs
-    admin/
-      Dashboard.tsx           -- Stats, chart, ordenes recientes
-      Pacientes.tsx           -- CRUD pacientes (Supabase)
-      Medicos.tsx             -- CRUD medicos (Supabase)
-      Reportes.tsx            -- Graficos y tablas
-      Sistema.tsx             -- Config del sistema, roles
-    meson/
-      Inicio.tsx              -- Dashboard meson
-      Pacientes.tsx           -- Lista pacientes (mock)
-      Medicos.tsx             -- Lista medicos (mock)
-      Ordenes.tsx             -- Lista ordenes (mock)
-      Citas.tsx               -- Reserva de citas
-      Triage.tsx              -- Test de triage interactivo
-      Configuracion.tsx       -- Tarjetas de config
-  integrations/supabase/
-    client.ts                 -- Supabase client
-    types.ts                  -- Tipos generados
+- app_role        ENUM('admin', 'medico', 'meson')
+- profiles        (user_id, full_name, rut, email)
+- user_roles      (user_id, role) + función has_role()
+- pacientes       (id, nombre, rut, telefono, email, ultima_visita,
+                  triage_label, triage_score, triage_desc, created_at)
+- medicos         (id, nombre, especialidad, email, estado, created_at)
+- ordenes         (id, paciente_id, medico_id, fecha, estado, prioridad, descripcion)
+- citas           (id, paciente_id, medico_id, fecha, hora, estado, motivo)
+- sesiones        (id, user_id, email, role, tiempo_online, hora_desconexion,
+                  duracion_segundos, ip_address, user_agent)
+- RLS policies en todas las tablas
 ```
 
-## Pasos de implementacion
+Incluir comentarios indicando qué pegar en SQL Editor de Supabase.
 
-### 1. Actualizar tema de colores (index.css)
-Reemplazar la paleta actual con el tema oscuro del repo: fondo dark blue (222 47% 11%), primary teal (174 100% 42%), colores custom para success, warning, info.
+## 4. Pop-up de confirmación al eliminar
+Crear componente reutilizable `src/components/ConfirmDeleteDialog.tsx` usando `AlertDialog` de shadcn.
 
-### 2. Configurar Supabase y migraciones
-Habilitar Lovable Cloud y crear las tablas necesarias:
-- `profiles` (user_id, full_name, avatar_url, rut)
-- `user_roles` (user_id, role enum admin/meson)
-- `boxes` (numero, piso, esta_activo)
-- `medicos` (user_id, especialidad)
-- `pacientes` (nombre, rut, telefono)
-- `citas` (paciente_id, medico_id, box_id, fecha, estado, motivo, prioridad)
-- `ordenes` (paciente_id, medico_id, fecha, descripcion, estado, notas)
-- Funcion `has_role()` security definer
-- Trigger para crear profile automaticamente
-- RLS policies para cada tabla
+Aplicar en:
+- `admin/Pacientes.tsx` — botón eliminar paciente
+- `admin/Medicos.tsx` — botón eliminar médico
+- `admin/Sistema.tsx` — botón eliminar usuario (agregar acción de eliminar en tabla)
+- `meson/Pacientes.tsx` — botón eliminar paciente
+- `meson/Ordenes.tsx`, `meson/Citas.tsx` — eliminar
 
-### 3. Crear hook useAuth y ProtectedRoute
-- AuthProvider con context: user, session, roles, hasRole, signOut
-- ProtectedRoute que valida rol requerido
+Diálogo: "¿Está seguro que desea eliminar a [nombre]? Esta acción no se puede deshacer." con botones Cancelar / Eliminar (destructivo).
 
-### 4. Crear layouts
-- AdminLayout: sidebar izquierdo + outlet
-- AdminSidebar: nav con iconos (Dashboard, Pacientes, Medicos, Reportes, Sistema)
-- MesonLayout: sidebar + header con busqueda
-- MesonSidebar: nav con iconos (Inicio, Pacientes, Medicos, Ordenes, Citas, Triage, Config)
+## 5. Gestión de usuarios en Sistema (admin)
+Mejorar `Sistema.tsx`:
+- Botón "Nuevo Usuario" con dialog (nombre, email, rol, password).
+- Acciones por fila: editar, **eliminar (con pop-up de confirmación)**.
+- Lista poblada desde el nuevo `userStore`.
 
-### 5. Crear paginas
-- **Login.tsx**: Tabs login/signup con Supabase auth
-- **Index.tsx**: Landing con links a panel Admin y panel Meson segun roles
-- **Admin**: Dashboard (stats + chart recharts + tabla ordenes), Pacientes (CRUD real con Supabase), Medicos (CRUD real), Reportes (graficos line/pie + tabla), Sistema (config, gestion usuarios/roles)
-- **Meson**: Inicio (dashboard), Pacientes, Medicos, Ordenes, Citas, Triage (cuestionario interactivo), Configuracion
+## 6. Pequeñas inspiraciones de iXRAY (sin sobrecargar)
+- Mantener RUN/RUT como identificador en pacientes (ya existe).
+- Dejar comentado en SQL un placeholder para `sucursales`, `prestaciones`, `convenios` por si los implementas después.
 
-### 6. Crear dialogs
-- NuevoPacienteDialog: formulario nombre, RUT, telefono
-- NuevoMedicoDialog: crea usuario auth + registro medico
-- NuevaOrdenDialog: selecciona paciente, medico, fecha, prioridad
+## Archivos afectados
 
-### 7. Actualizar App.tsx con rutas
-- `/` - Index
-- `/login` - Login
-- `/admin/*` - Rutas admin protegidas con rol "admin"
-- `/meson/*` - Rutas meson protegidas con rol "meson"
+**Crear:**
+- `supabase/schema.sql`
+- `src/components/ConfirmDeleteDialog.tsx`
+- `src/stores/sessionStore.ts`
+- `src/stores/userStore.ts`
+- `src/pages/admin/Sesiones.tsx`
+- `src/components/admin/NuevoUsuarioDialog.tsx`
 
-## Dependencia externa
-El proyecto usa `recharts` para graficos (ya disponible en el proyecto base).
+**Modificar:**
+- `src/stores/appStore.ts` (vaciar mocks)
+- `src/hooks/useAuth.tsx` (registrar sesiones)
+- `src/components/layout/AdminSidebar.tsx` (link Sesiones)
+- `src/App.tsx` (ruta `/admin/sesiones`)
+- `src/pages/admin/Dashboard.tsx`, `Sistema.tsx`, `Medicos.tsx`, `Pacientes.tsx`, `Reportes.tsx`
+- `src/pages/meson/Pacientes.tsx`, `Ordenes.tsx`, `Citas.tsx`, `Inicio.tsx`, `Medicos.tsx`
+- `README.md` (instrucciones para correr el SQL en Supabase local)
 
-## Notas tecnicas
-- La app usa Supabase para auth y datos reales en las paginas admin
-- Las paginas meson usan datos mock (hardcoded)
-- El tema es completamente dark con acentos teal
-- Se necesita Lovable Cloud habilitado para la base de datos
+## Notas técnicas
+- El tracking de sesión se mantiene 100% client-side (Zustand + localStorage) hasta que conectes Supabase real. El SQL incluye la tabla `sesiones` para cuando migres.
+- `beforeunload` no garantiza ejecución; para producción usarás Supabase Realtime + heartbeat, pero por ahora es suficiente.
+- No se altera el diseño visual.
 
