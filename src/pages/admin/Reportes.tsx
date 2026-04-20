@@ -5,9 +5,12 @@ import { Download } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAppStore } from "@/stores/appStore";
+import { useState } from "react";
+import ReporteMedicoDialog from "@/components/admin/ReporteMedicoDialog";
 
 const Reportes = () => {
   const { pacientes, ordenes, citas } = useAppStore();
+  const [medicoDialogOpen, setMedicoDialogOpen] = useState(false);
 
   const downloadDailyPDF = () => {
     const doc = new jsPDF();
@@ -71,6 +74,9 @@ const Reportes = () => {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Reportes</h1>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setMedicoDialogOpen(true)}>
+            <Download className="mr-2 h-4 w-4" />Reporte Individual Médico
+          </Button>
           <Button variant="outline" onClick={downloadDailyPDF}>
             <Download className="mr-2 h-4 w-4" />Reporte Diario (PDF)
           </Button>
@@ -118,6 +124,7 @@ const Reportes = () => {
           </Table>
         </CardContent>
       </Card>
+      <ReporteMedicoDialog open={medicoDialogOpen} onOpenChange={setMedicoDialogOpen} />
     </div>
   );
 };

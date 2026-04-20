@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Users, UserCog, CalendarDays, ClipboardList } from "lucide-react";
 import { useAppStore } from "@/stores/appStore";
+import BoxVisualizer from "@/components/admin/BoxVisualizer";
 
 const estadoBadge = (estado: string) => {
   switch (estado) {
@@ -14,12 +15,12 @@ const estadoBadge = (estado: string) => {
 };
 
 const AdminDashboard = () => {
-  const { pacientes, ordenes, citas } = useAppStore();
+  const { pacientes, medicos, ordenes, citas } = useAppStore();
   const today = new Date().toISOString().split("T")[0];
 
   const stats = [
     { label: "Pacientes", value: pacientes.length.toString(), icon: Users, color: "text-primary" },
-    { label: "Médicos", value: "0", icon: UserCog, color: "text-info" },
+    { label: "Médicos", value: medicos.length.toString(), icon: UserCog, color: "text-info" },
     { label: "Citas Hoy", value: citas.filter((c) => c.fecha === today).length.toString(), icon: CalendarDays, color: "text-success" },
     { label: "Órdenes Pendientes", value: ordenes.filter((o) => o.estado === "pendiente").length.toString(), icon: ClipboardList, color: "text-warning" },
   ];
@@ -29,7 +30,7 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         {stats.map((s) => (
           <Card key={s.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -42,29 +43,35 @@ const AdminDashboard = () => {
           </Card>
         ))}
       </div>
-      <Card>
-        <CardHeader><CardTitle>Órdenes Recientes</CardTitle></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Paciente</TableHead><TableHead>Médico</TableHead><TableHead>Fecha</TableHead><TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recent.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Sin órdenes registradas.</TableCell></TableRow>
-              ) : (
-                recent.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell>{o.paciente}</TableCell><TableCell>{o.medico}</TableCell><TableCell>{o.fecha}</TableCell><TableCell>{estadoBadge(o.estado)}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Órdenes Recientes</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Paciente</TableHead><TableHead>Médico</TableHead><TableHead>Fecha</TableHead><TableHead>Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recent.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Sin órdenes registradas.</TableCell></TableRow>
+                ) : (
+                  recent.map((o) => (
+                    <TableRow key={o.id}>
+                      <TableCell>{o.paciente}</TableCell><TableCell>{o.medico}</TableCell><TableCell>{o.fecha}</TableCell><TableCell>{estadoBadge(o.estado)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Visualizador de Boxes</CardTitle></CardHeader>
+          <CardContent><BoxVisualizer /></CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

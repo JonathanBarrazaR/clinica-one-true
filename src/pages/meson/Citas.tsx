@@ -11,19 +11,23 @@ import { useAppStore, Cita } from "@/stores/appStore";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 const MesonCitas = () => {
-  const { citas, pacientes, addCita, deleteCita } = useAppStore();
+  const { citas, pacientes, medicos, boxes, addCita, deleteCita, asignarBox } = useAppStore();
   const [pacienteId, setPacienteId] = useState("");
-  const [medico, setMedico] = useState("");
+  const [medicoId, setMedicoId] = useState("");
+  const [boxId, setBoxId] = useState("none");
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
+  const [horaTermino, setHoraTermino] = useState("");
   const [toDelete, setToDelete] = useState<Cita | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const pac = pacientes.find((p) => p.id.toString() === pacienteId);
-    if (!pac) return;
-    addCita({ paciente: pac.nombre, medico, fecha, hora, estado: "pendiente" });
-    setPacienteId(""); setMedico(""); setFecha(""); setHora("");
+    const med = medicos.find((m) => m.id.toString() === medicoId);
+    if (!pac || !med) return;
+    const cita = addCita({ pacienteId: pac.id, medicoId: med.id, boxId: boxId === "none" ? undefined : Number(boxId), paciente: pac.nombre, medico: med.nombre, fecha, hora, horaTermino, estado: "pendiente" });
+    if (boxId !== "none") asignarBox(Number(boxId), { medicoId: med.id, pacienteId: pac.id, citaId: cita.id, horaInicioAsignada: hora, horaTerminoAsignada: horaTermino || null });
+    setPacienteId(""); setMedicoId(""); setBoxId("none"); setFecha(""); setHora(""); setHoraTermino("");
   };
 
   return (
@@ -53,13 +57,35 @@ const MesonCitas = () => {
               </div>
               <div className="space-y-2">
                 <Label>Médico</Label>
-                <Input placeholder="Nombre del médico" value={medico} onChange={(e) => setMedico(e.target.value)} required />
+                <Select value={medicoId} onValueChange={setMedicoId}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar médico" /></SelectTrigger>
+                  <SelectContent>
+                    {medicos.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">Registra primero un médico</div>
+                    ) : medicos.map((m) => (
+                      <SelectItem key={m.id} value={m.id.toString()}>{m.nombre} - {m.especialidad}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required /></div>
                 <div className="space-y-2"><Label>Hora</Label><Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} required /></div>
               </div>
-              <Button type="submit" className="w-full" disabled={!pacienteId}>Agendar Cita</Button>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Hora término</Label><Input type="time" value={horaTermino} onChange={(e) => setHoraTermino(e.target.value)} /></div>
+                <div className="space-y-2">
+                  <Label>Box</Label>
+                  <Select value={boxId} onValueChange={setBoxId}>
+                    <SelectTrigger><SelectValue placeholder="Sin box" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin box asignado</SelectItem>
+                      {boxes.filter((b) => b.estado === "disponible").map((b) => <SelectItem key={b.id} value={b.id.toString()}>{b.nombre}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={!pacienteId || !medicoId}>Agendar Cita</Button>
             </form>
           </CardContent>
         </Card>
