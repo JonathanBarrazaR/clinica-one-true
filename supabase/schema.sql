@@ -110,6 +110,32 @@ create table if not exists public.sesiones (
 );
 alter table public.sesiones enable row level security;
 
+-- 10. Boxes clínicos
+create table if not exists public.boxes (
+  id uuid primary key default gen_random_uuid(),
+  numero integer not null unique,
+  nombre text not null,
+  esta_activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.boxes enable row level security;
+
+-- 11. Asignaciones de boxes para medir ocupación y horas trabajadas
+create table if not exists public.box_asignaciones (
+  id uuid primary key default gen_random_uuid(),
+  box_id uuid not null references public.boxes(id) on delete cascade,
+  medico_id uuid references public.medicos(id) on delete set null,
+  paciente_id uuid references public.pacientes(id) on delete set null,
+  cita_id uuid references public.citas(id) on delete set null,
+  hora_inicio_asignada timestamptz,
+  hora_termino_asignada timestamptz,
+  hora_inicio_real timestamptz,
+  hora_termino_real timestamptz,
+  estado text not null default 'ocupado',
+  created_at timestamptz not null default now()
+);
+alter table public.box_asignaciones enable row level security;
+
 -- ============================================================
 -- RLS Policies
 -- ============================================================
@@ -165,6 +191,34 @@ create policy "sesiones self update" on public.sesiones
   for update using (auth.uid() = user_id);
 create policy "sesiones read" on public.sesiones
   for select using (auth.uid() = user_id or public.has_role(auth.uid(), 'admin'));
+
+-- boxes: admin gestiona; admin, meson y medico leen
+create policy "boxes read" on public.boxes for select using (
+  public.has_role(auth.uid(), 'admin')
+  or public.has_role(auth.uid(), 'meson')
+  or public.has_role(auth.uid(), 'medico')
+);
+create policy "boxes admin manage" on public.boxes
+  for all using (public.has_role(auth.uid(), 'admin'))
+  with check (public.has_role(auth.uid(), 'admin'));
+
+-- box_asignaciones: admin/meson gestionan; médico puede leer
+create policy "box_asignaciones read" on public.box_asignaciones for select using (
+  public.has_role(auth.uid(), 'admin')
+  or public.has_role(auth.uid(), 'meson')
+  or public.has_role(auth.uid(), 'medico')
+);
+create policy "box_asignaciones manage" on public.box_asignaciones
+  for all using (public.has_role(auth.uid(), 'admin') or public.has_role(auth.uid(), 'meson'))
+  with check (public.has_role(auth.uid(), 'admin') or public.has_role(auth.uid(), 'meson'));
+
+-- Consulta sugerida: horas trabajadas por médico este mes
+-- select medico_id,
+--   sum(extract(epoch from (coalesce(hora_termino_real, now()) - hora_inicio_real))) / 3600 as horas_trabajadas
+-- from public.box_asignaciones
+-- where hora_inicio_real >= date_trunc('month', now())
+--   and estado in ('ocupado', 'finalizado')
+-- group by medico_id;
 
 -- ============================================================
 -- TODO (futuro, inspirado en iXRAY) — descomentar al implementar
