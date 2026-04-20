@@ -7,13 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import NuevoMedicoDialog from "@/components/admin/NuevoMedicoDialog";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
-
-interface Medico {
-  id: number; nombre: string; especialidad: string; email: string; estado: string;
-}
+import { useAppStore, Medico } from "@/stores/appStore";
 
 const AdminMedicos = () => {
-  const [medicos, setMedicos] = useState<Medico[]>([]);
+  const { medicos, addMedico, deleteMedico } = useAppStore();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Medico | null>(null);
@@ -23,7 +20,7 @@ const AdminMedicos = () => {
   );
 
   const handleAdd = (data: { nombre: string; especialidad: string; email: string }) => {
-    setMedicos([...medicos, { id: Date.now(), estado: "activo", ...data }]);
+    addMedico(data);
   };
 
   return (
@@ -77,7 +74,7 @@ const AdminMedicos = () => {
         onOpenChange={(o) => !o && setToDelete(null)}
         itemName={toDelete?.nombre}
         onConfirm={() => {
-          if (toDelete) setMedicos(medicos.filter((m) => m.id !== toDelete.id));
+          if (toDelete) deleteMedico(toDelete.id);
           setToDelete(null);
         }}
       />
