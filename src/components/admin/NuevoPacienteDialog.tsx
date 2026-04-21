@@ -43,13 +43,14 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit?: (data: { nombre: string; rut: string; telefono: string; email: string }) => void;
+  initialData?: { nombre: string; rut: string; telefono: string; email: string } | null;
 }
 
-const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
-  const [nombre, setNombre] = useState("");
-  const [rut, setRut] = useState("");
-  const [telefono, setTelefono] = useState(PHONE_PREFIX);
-  const [email, setEmail] = useState("");
+const NuevoPacienteDialog = ({ open, onOpenChange, onSubmit, initialData }: Props) => {
+  const [nombre, setNombre] = useState(initialData?.nombre ?? "");
+  const [rut, setRut] = useState(initialData?.rut ?? "");
+  const [telefono, setTelefono] = useState(initialData?.telefono ?? PHONE_PREFIX);
+  const [email, setEmail] = useState(initialData?.email ?? "");
   const [iniciarTriage, setIniciarTriage] = useState(false);
   const { addPaciente } = useAppStore();
   const navigate = useNavigate();
@@ -67,6 +68,14 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
       return;
     }
 
+    if (onSubmit) {
+      onSubmit({ nombre, rut, telefono, email });
+      toast({ title: initialData ? "Paciente actualizado" : "Paciente creado", description: `${nombre} ha sido ${initialData ? "actualizado" : "registrado"}.` });
+      setNombre(""); setRut(""); setTelefono(PHONE_PREFIX); setEmail(""); setIniciarTriage(false);
+      onOpenChange(false);
+      return;
+    }
+
     const newPaciente = addPaciente({ nombre, rut, telefono, email, triageResult: null });
     toast({ title: "Paciente creado", description: `${nombre} ha sido registrado.` });
     setNombre(""); setRut(""); setTelefono(PHONE_PREFIX); setEmail(""); setIniciarTriage(false);
@@ -79,7 +88,7 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nuevo Paciente</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{initialData ? "Actualizar Paciente" : "Nuevo Paciente"}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2"><Label>Nombre completo</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} required /></div>
           <div className="space-y-2"><Label>RUT</Label><Input value={rut} onChange={(e) => setRut(formatRut(e.target.value))} maxLength={12} placeholder="12.345.678-9" required /></div>
@@ -89,7 +98,7 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
             <Checkbox id="triage" checked={iniciarTriage} onCheckedChange={(c) => setIniciarTriage(c === true)} />
             <Label htmlFor="triage" className="text-sm cursor-pointer">Iniciar triage después de registrar (opcional)</Label>
           </div>
-          <DialogFooter><Button type="submit">Crear Paciente</Button></DialogFooter>
+          <DialogFooter><Button type="submit">{initialData ? "Guardar Cambios" : "Crear Paciente"}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
