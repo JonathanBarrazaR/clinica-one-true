@@ -124,7 +124,19 @@ export const useAppStore = create<AppStore>((set) => ({
     set((s) => ({ citas: [...s.citas, newCita] }));
     return newCita;
   },
-  deleteCita: (id) => set((s) => ({ citas: s.citas.filter((c) => c.id !== id) })),
+  deleteCita: (id) => set((s) => ({
+    citas: s.citas.filter((c) => c.id !== id),
+    boxes: s.boxes.map((b) => b.citaId === id ? {
+      ...b,
+      estado: 'disponible',
+      medicoId: null,
+      pacienteId: null,
+      citaId: null,
+      horaInicioAsignada: null,
+      horaTerminoAsignada: null,
+      horaTerminoReal: new Date().toISOString(),
+    } : b),
+  })),
   addBox: (b) => {
     const newBox: Box = { ...b, id: Date.now(), estado: 'disponible' };
     set((s) => ({ boxes: [...s.boxes, newBox].slice(0, 5) }));
