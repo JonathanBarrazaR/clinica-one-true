@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,17 +43,27 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit?: (data: { nombre: string; rut: string; telefono: string; email: string }) => void;
+  initialData?: { nombre: string; rut: string; telefono: string; email: string } | null;
 }
 
-const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
-  const [nombre, setNombre] = useState("");
-  const [rut, setRut] = useState("");
-  const [telefono, setTelefono] = useState(PHONE_PREFIX);
-  const [email, setEmail] = useState("");
+const NuevoPacienteDialog = ({ open, onOpenChange, onSubmit, initialData }: Props) => {
+  const [nombre, setNombre] = useState(initialData?.nombre ?? "");
+  const [rut, setRut] = useState(initialData?.rut ?? "");
+  const [telefono, setTelefono] = useState(initialData?.telefono ?? PHONE_PREFIX);
+  const [email, setEmail] = useState(initialData?.email ?? "");
   const [iniciarTriage, setIniciarTriage] = useState(false);
   const { addPaciente } = useAppStore();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    setNombre(initialData?.nombre ?? "");
+    setRut(initialData?.rut ?? "");
+    setTelefono(initialData?.telefono ?? PHONE_PREFIX);
+    setEmail(initialData?.email ?? "");
+    setIniciarTriage(false);
+  }, [initialData, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +74,14 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
 
     if (!isPhoneValid(telefono)) {
       toast({ title: "Teléfono inválido", description: "Ingrese un teléfono válido con formato +569 92315312." });
+      return;
+    }
+
+    if (onSubmit) {
+      onSubmit({ nombre, rut, telefono, email });
+      toast({ title: initialData ? "Paciente actualizado" : "Paciente creado", description: `${nombre} ha sido ${initialData ? "actualizado" : "registrado"}.` });
+      setNombre(""); setRut(""); setTelefono(PHONE_PREFIX); setEmail(""); setIniciarTriage(false);
+      onOpenChange(false);
       return;
     }
 
@@ -79,17 +97,17 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nuevo Paciente</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{initialData ? "Actualizar Paciente" : "Nuevo Paciente"}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2"><Label>Nombre completo</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} required /></div>
           <div className="space-y-2"><Label>RUT</Label><Input value={rut} onChange={(e) => setRut(formatRut(e.target.value))} maxLength={12} placeholder="12.345.678-9" required /></div>
           <div className="space-y-2"><Label>Teléfono</Label><Input value={telefono} onFocus={() => setTelefono((current) => current.startsWith(PHONE_PREFIX) ? current : PHONE_PREFIX)} onChange={(e) => setTelefono(formatPhone(e.target.value))} maxLength={13} placeholder="+569 92315312" required /></div>
           <div className="space-y-2"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-          <div className="flex items-center space-x-2">
+          {!initialData && <div className="flex items-center space-x-2">
             <Checkbox id="triage" checked={iniciarTriage} onCheckedChange={(c) => setIniciarTriage(c === true)} />
             <Label htmlFor="triage" className="text-sm cursor-pointer">Iniciar triage después de registrar (opcional)</Label>
-          </div>
-          <DialogFooter><Button type="submit">Crear Paciente</Button></DialogFooter>
+          </div>}
+          <DialogFooter><Button type="submit">{initialData ? "Guardar Cambios" : "Crear Paciente"}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

@@ -3,26 +3,37 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Trash2 } from "lucide-react";
+import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import NuevoPacienteDialog from "@/components/admin/NuevoPacienteDialog";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAppStore, Paciente } from "@/stores/appStore";
 
 const AdminPacientes = () => {
-  const { pacientes, deletePaciente } = useAppStore();
+  const { pacientes, updatePaciente, deletePaciente } = useAppStore();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingPaciente, setEditingPaciente] = useState<Paciente | null>(null);
   const [toDelete, setToDelete] = useState<Paciente | null>(null);
 
   const filtered = pacientes.filter((p) =>
     p.nombre.toLowerCase().includes(search.toLowerCase()) || p.rut.includes(search)
   );
 
+  const handleSubmit = (data: { nombre: string; rut: string; telefono: string; email: string }) => {
+    if (editingPaciente) updatePaciente(editingPaciente.id, data);
+    setEditingPaciente(null);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) setEditingPaciente(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Pacientes</h1>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Nuevo Paciente</Button>
+        <Button onClick={() => { setEditingPaciente(null); setDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />Nuevo Paciente</Button>
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -34,7 +45,7 @@ const AdminPacientes = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nombre</TableHead><TableHead>RUT</TableHead><TableHead>Teléfono</TableHead><TableHead>Email</TableHead><TableHead className="w-20">Acciones</TableHead>
+                <TableHead>Nombre</TableHead><TableHead>RUT</TableHead><TableHead>Teléfono</TableHead><TableHead>Email</TableHead><TableHead className="w-24">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -46,7 +57,10 @@ const AdminPacientes = () => {
                     <TableCell className="font-medium">{p.nombre}</TableCell>
                     <TableCell>{p.rut}</TableCell><TableCell>{p.telefono}</TableCell><TableCell>{p.email}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => setToDelete(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingPaciente(p); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setToDelete(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -55,7 +69,7 @@ const AdminPacientes = () => {
           </Table>
         </CardContent>
       </Card>
-      <NuevoPacienteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <NuevoPacienteDialog open={dialogOpen} onOpenChange={handleDialogChange} onSubmit={handleSubmit} initialData={editingPaciente} />
       <ConfirmDeleteDialog
         open={!!toDelete}
         onOpenChange={(o) => !o && setToDelete(null)}
