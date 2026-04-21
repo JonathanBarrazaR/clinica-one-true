@@ -67,6 +67,7 @@ interface AppStore {
   deletePaciente: (id: number) => void;
   updatePacienteTriage: (id: number, result: Paciente['triageResult']) => void;
   addMedico: (m: Omit<Medico, 'id' | 'estado'>) => Medico;
+  updateMedico: (id: number, data: Partial<Omit<Medico, 'id'>>) => void;
   deleteMedico: (id: number) => void;
   addOrden: (o: Omit<Orden, 'id'>) => void;
   deleteOrden: (id: number) => void;
@@ -112,6 +113,7 @@ export const useAppStore = create<AppStore>((set) => ({
     set((s) => ({ medicos: [...s.medicos, newMedico] }));
     return newMedico;
   },
+  updateMedico: (id, data) => set((s) => ({ medicos: s.medicos.map((m) => m.id === id ? { ...m, ...data } : m) })),
   deleteMedico: (id) => set((s) => ({ medicos: s.medicos.filter((m) => m.id !== id) })),
   addOrden: (o) => set((s) => ({ ordenes: [{ ...o, id: Date.now() }, ...s.ordenes] })),
   deleteOrden: (id) => set((s) => ({ ordenes: s.ordenes.filter((o) => o.id !== id) })),
