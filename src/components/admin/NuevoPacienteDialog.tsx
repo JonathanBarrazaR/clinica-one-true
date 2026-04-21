@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/stores/appStore";
 import { useToast } from "@/hooks/use-toast";
 
-const PHONE_PREFIX = "+569";
+const PHONE_PREFIX = "+569 ";
 
 const getRutRawValue = (value: string) => value.replace(/[^0-9kK]/g, "").slice(0, 9).toUpperCase();
 
@@ -28,7 +28,7 @@ const formatPhone = (value: string) => {
   const digits = value.replace(/\D/g, "");
   const userDigits = digits.startsWith("569") ? digits.slice(3) : digits;
 
-  return `${PHONE_PREFIX}${userDigits.slice(0, 9)}`;
+  return `${PHONE_PREFIX}${userDigits.slice(0, 8)}`;
 };
 
 const isRutValid = (value: string) => {
@@ -37,7 +37,7 @@ const isRutValid = (value: string) => {
   return raw.length >= 8 && raw.length <= 9 && /^\d{1,2}\.\d{3}\.\d{3}-[0-9K]$/.test(value);
 };
 
-const isPhoneValid = (value: string) => value.startsWith(PHONE_PREFIX) && value.slice(PHONE_PREFIX.length).replace(/\D/g, "").length === 9;
+const isPhoneValid = (value: string) => /^\+569 \d{8}$/.test(value);
 
 interface Props {
   open: boolean;
@@ -63,7 +63,7 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
     }
 
     if (!isPhoneValid(telefono)) {
-      toast({ title: "Teléfono inválido", description: "Ingrese 9 dígitos después del prefijo +569." });
+      toast({ title: "Teléfono inválido", description: "Ingrese un teléfono válido con formato +569 92315312." });
       return;
     }
 
@@ -83,7 +83,7 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2"><Label>Nombre completo</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} required /></div>
           <div className="space-y-2"><Label>RUT</Label><Input value={rut} onChange={(e) => setRut(formatRut(e.target.value))} maxLength={12} placeholder="12.345.678-9" required /></div>
-          <div className="space-y-2"><Label>Teléfono</Label><Input value={telefono} onFocus={() => setTelefono((current) => current.startsWith(PHONE_PREFIX) ? current : PHONE_PREFIX)} onChange={(e) => setTelefono(formatPhone(e.target.value))} maxLength={13} placeholder="+569123456789" required /></div>
+          <div className="space-y-2"><Label>Teléfono</Label><Input value={telefono} onFocus={() => setTelefono((current) => current.startsWith(PHONE_PREFIX) ? current : PHONE_PREFIX)} onChange={(e) => setTelefono(formatPhone(e.target.value))} maxLength={13} placeholder="+569 92315312" required /></div>
           <div className="space-y-2"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
           <div className="flex items-center space-x-2">
             <Checkbox id="triage" checked={iniciarTriage} onCheckedChange={(c) => setIniciarTriage(c === true)} />
