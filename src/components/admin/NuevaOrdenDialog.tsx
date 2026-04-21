@@ -12,26 +12,28 @@ interface Props {
 }
 
 const NuevaOrdenDialog = ({ open, onOpenChange }: Props) => {
-  const { pacientes, addOrden } = useAppStore();
+  const { pacientes, medicos, addOrden } = useAppStore();
   const [pacienteId, setPacienteId] = useState("");
-  const [medico, setMedico] = useState("");
+  const [medicoId, setMedicoId] = useState("");
   const [prioridad, setPrioridad] = useState("");
   const [descripcion, setDescripcion] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const pac = pacientes.find((p) => p.id.toString() === pacienteId);
-    if (!pac) return;
+    const med = medicos.find((m) => m.id.toString() === medicoId);
+    if (!pac || !med) return;
     addOrden({
       pacienteId: pac.id,
+      medicoId: med.id,
       paciente: pac.nombre,
-      medico,
+      medico: med.nombre,
       fecha: new Date().toISOString().split("T")[0],
       estado: "pendiente",
       prioridad,
       descripcion,
     });
-    setPacienteId(""); setMedico(""); setPrioridad(""); setDescripcion("");
+    setPacienteId(""); setMedicoId(""); setPrioridad(""); setDescripcion("");
     onOpenChange(false);
   };
 
@@ -53,13 +55,12 @@ const NuevaOrdenDialog = ({ open, onOpenChange }: Props) => {
           </div>
           <div className="space-y-2">
             <Label>Médico</Label>
-            <Select value={medico} onValueChange={setMedico}>
+            <Select value={medicoId} onValueChange={setMedicoId}>
               <SelectTrigger><SelectValue placeholder="Seleccionar médico" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Dr. Pérez">Dr. Pérez - Cardiología</SelectItem>
-                <SelectItem value="Dra. López">Dra. López - Pediatría</SelectItem>
-                <SelectItem value="Dr. Silva">Dr. Silva - Traumatología</SelectItem>
-                <SelectItem value="Dra. Ruiz">Dra. Ruiz - Dermatología</SelectItem>
+                {medicos.map((m) => (
+                  <SelectItem key={m.id} value={m.id.toString()}>{m.nombre} - {m.especialidad}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

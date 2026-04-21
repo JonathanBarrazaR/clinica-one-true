@@ -75,7 +75,7 @@ const MesonPacientes = () => {
           </Table>
         </CardContent>
       </Card>
-      <NuevoPacienteDialog open={dialogOpen} onOpenChange={setDialogOpen} onSubmit={() => {}} />
+      <NuevoPacienteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       <ConfirmDeleteDialog
         open={!!toDelete}
         onOpenChange={(o) => !o && setToDelete(null)}
