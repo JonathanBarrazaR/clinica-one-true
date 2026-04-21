@@ -64,6 +64,7 @@ interface AppStore {
   citas: Cita[];
   boxes: Box[];
   addPaciente: (p: Omit<Paciente, 'id' | 'ultimaVisita'>) => Paciente;
+  updatePaciente: (id: number, data: Partial<Omit<Paciente, 'id' | 'ultimaVisita'>>) => void;
   deletePaciente: (id: number) => void;
   updatePacienteTriage: (id: number, result: Paciente['triageResult']) => void;
   addMedico: (m: Omit<Medico, 'id' | 'estado'>) => Medico;
@@ -104,6 +105,7 @@ export const useAppStore = create<AppStore>((set) => ({
     set((s) => ({ pacientes: [...s.pacientes, newPaciente] }));
     return newPaciente;
   },
+  updatePaciente: (id, data) => set((s) => ({ pacientes: s.pacientes.map((p) => p.id === id ? { ...p, ...data } : p) })),
   deletePaciente: (id) => set((s) => ({ pacientes: s.pacientes.filter((p) => p.id !== id) })),
   updatePacienteTriage: (id, result) => set((s) => ({
     pacientes: s.pacientes.map((p) => p.id === id ? { ...p, triageResult: result } : p),
