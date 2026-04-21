@@ -8,6 +8,37 @@ import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/stores/appStore";
 import { useToast } from "@/hooks/use-toast";
 
+const PHONE_PREFIX = "+569";
+
+const getRutRawValue = (value: string) => value.replace(/[^0-9kK]/g, "").slice(0, 9).toUpperCase();
+
+const formatRut = (value: string) => {
+  const raw = getRutRawValue(value);
+
+  if (raw.length <= 1) return raw;
+
+  const body = raw.slice(0, -1);
+  const verifier = raw.slice(-1);
+  const formattedBody = body.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  return `${formattedBody}-${verifier}`.slice(0, 12);
+};
+
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  const userDigits = digits.startsWith("569") ? digits.slice(3) : digits;
+
+  return `${PHONE_PREFIX}${userDigits.slice(0, 9)}`;
+};
+
+const isRutValid = (value: string) => {
+  const raw = getRutRawValue(value);
+
+  return raw.length >= 8 && raw.length <= 9 && /^\d{1,2}\.\d{3}\.\d{3}-[0-9K]$/.test(value);
+};
+
+const isPhoneValid = (value: string) => value.startsWith(PHONE_PREFIX) && value.slice(PHONE_PREFIX.length).replace(/\D/g, "").length === 9;
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -17,7 +48,7 @@ interface Props {
 const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
   const [nombre, setNombre] = useState("");
   const [rut, setRut] = useState("");
-  const [telefono, setTelefono] = useState("");
+  const [telefono, setTelefono] = useState(PHONE_PREFIX);
   const [email, setEmail] = useState("");
   const [iniciarTriage, setIniciarTriage] = useState(false);
   const { addPaciente } = useAppStore();
@@ -26,9 +57,19 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isRutValid(rut)) {
+      toast({ title: "RUT inválido", description: "Ingrese un RUT válido con formato 12.345.678-9." });
+      return;
+    }
+
+    if (!isPhoneValid(telefono)) {
+      toast({ title: "Teléfono inválido", description: "Ingrese 9 dígitos después del prefijo +569." });
+      return;
+    }
+
     const newPaciente = addPaciente({ nombre, rut, telefono, email, triageResult: null });
     toast({ title: "Paciente creado", description: `${nombre} ha sido registrado.` });
-    setNombre(""); setRut(""); setTelefono(""); setEmail(""); setIniciarTriage(false);
+    setNombre(""); setRut(""); setTelefono(PHONE_PREFIX); setEmail(""); setIniciarTriage(false);
     onOpenChange(false);
     if (iniciarTriage) {
       navigate(`/meson/triage?pacienteId=${newPaciente.id}`);
@@ -41,8 +82,8 @@ const NuevoPacienteDialog = ({ open, onOpenChange }: Props) => {
         <DialogHeader><DialogTitle>Nuevo Paciente</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2"><Label>Nombre completo</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} required /></div>
-          <div className="space-y-2"><Label>RUT</Label><Input value={rut} onChange={(e) => setRut(e.target.value)} placeholder="12.345.678-9" required /></div>
-          <div className="space-y-2"><Label>Teléfono</Label><Input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+56 9 1234 5678" required /></div>
+          <div className="space-y-2"><Label>RUT</Label><Input value={rut} onChange={(e) => setRut(formatRut(e.target.value))} maxLength={12} placeholder="12.345.678-9" required /></div>
+          <div className="space-y-2"><Label>Teléfono</Label><Input value={telefono} onFocus={() => setTelefono((current) => current.startsWith(PHONE_PREFIX) ? current : PHONE_PREFIX)} onChange={(e) => setTelefono(formatPhone(e.target.value))} maxLength={13} placeholder="+569123456789" required /></div>
           <div className="space-y-2"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
           <div className="flex items-center space-x-2">
             <Checkbox id="triage" checked={iniciarTriage} onCheckedChange={(c) => setIniciarTriage(c === true)} />
