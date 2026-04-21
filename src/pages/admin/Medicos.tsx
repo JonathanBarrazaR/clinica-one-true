@@ -10,9 +10,10 @@ import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAppStore, Medico } from "@/stores/appStore";
 
 const AdminMedicos = () => {
-  const { medicos, addMedico, deleteMedico } = useAppStore();
+  const { medicos, addMedico, updateMedico, deleteMedico } = useAppStore();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingMedico, setEditingMedico] = useState<Medico | null>(null);
   const [toDelete, setToDelete] = useState<Medico | null>(null);
 
   const filtered = medicos.filter((m) =>
@@ -20,14 +21,25 @@ const AdminMedicos = () => {
   );
 
   const handleAdd = (data: { nombre: string; especialidad: string; email: string }) => {
+    if (editingMedico) {
+      updateMedico(editingMedico.id, data);
+      setEditingMedico(null);
+      return;
+    }
+
     addMedico(data);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) setEditingMedico(null);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Médicos</h1>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Nuevo Médico</Button>
+        <Button onClick={() => { setEditingMedico(null); setDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />Nuevo Médico</Button>
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -57,7 +69,7 @@ const AdminMedicos = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingMedico(m); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => setToDelete(m)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </div>
                     </TableCell>
@@ -68,7 +80,7 @@ const AdminMedicos = () => {
           </Table>
         </CardContent>
       </Card>
-      <NuevoMedicoDialog open={dialogOpen} onOpenChange={setDialogOpen} onSubmit={handleAdd} />
+      <NuevoMedicoDialog open={dialogOpen} onOpenChange={handleDialogChange} onSubmit={handleAdd} initialData={editingMedico} />
       <ConfirmDeleteDialog
         open={!!toDelete}
         onOpenChange={(o) => !o && setToDelete(null)}
