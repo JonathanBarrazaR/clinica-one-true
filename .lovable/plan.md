@@ -1,72 +1,190 @@
 
-# Plan: Hacer funcional el botón de lápiz para editar médicos
+# Plan: Formato automático de RUT y teléfono en Pacientes
 
 ## Objetivo
-Convertir el botón del lápiz blanco en la tabla de Médicos en una acción funcional para corregir datos ingresados por error por el admin.
+En el formulario “Nuevo Paciente”, usado tanto en el panel de Administrador como en Mesón, limitar y formatear automáticamente:
+
+- RUT con máximo 12 caracteres incluyendo puntos y guion.
+- Teléfono con prefijo fijo `+569` y 9 dígitos adicionales ingresables.
 
 ## Cambios a realizar
 
-### 1. Agregar actualización de médicos en el store
-Modificar `src/stores/appStore.ts` para incluir una función:
+### 1. Crear utilidades de formato para RUT y teléfono
 
-```ts
-updateMedico(id, data)
+Agregar funciones dentro de `src/components/admin/NuevoPacienteDialog.tsx` o en un helper reutilizable si se prefiere mantener limpio el componente.
+
+#### RUT
+Implementar una función `formatRut(value)` que:
+
+- Elimine caracteres no válidos.
+- Permita solo números y letra `K/k`.
+- Limite el RUT base a máximo 9 caracteres sin formato:
+  - 8 dígitos de cuerpo.
+  - 1 dígito verificador.
+- Inserte automáticamente:
+  - Puntos en el cuerpo.
+  - Guion antes del dígito verificador.
+- Devuelva máximo 12 caracteres formateados.
+
+Ejemplos esperados:
+
+```text
+1              -> 1
+12             -> 1-2
+123            -> 12-3
+1234           -> 123-4
+12345          -> 1.234-5
+12345678       -> 1.234.567-8
+123456789      -> 12.345.678-9
+12345678k      -> 12.345.678-K
 ```
 
-Permitirá actualizar:
-- Nombre
-- Especialidad
-- Email
-- Estado, si se decide incluirlo en el formulario
+El campo quedará con:
 
-La función actualizará el médico existente manteniendo su `id`.
+```tsx
+maxLength={12}
+placeholder="12.345.678-9"
+```
 
-### 2. Reutilizar el diálogo de médico para crear y editar
-Modificar `src/components/admin/NuevoMedicoDialog.tsx` para que soporte dos modos:
+### 2. Aplicar el formato automático mientras se escribe
 
-- **Crear médico**
-  - Título: `Nuevo Médico`
-  - Botón: `Crear Médico`
-  - Campos vacíos
+Modificar el input de RUT en `NuevoPacienteDialog.tsx`.
 
-- **Editar médico**
-  - Título: `Editar Médico`
-  - Botón: `Guardar Cambios`
-  - Campos prellenados con los datos actuales del médico
+Actualmente:
 
-El componente recibirá un médico opcional como `initialData` o `medico`.
+```tsx
+<Input value={rut} onChange={(e) => setRut(e.target.value)} />
+```
 
-### 3. Conectar el botón lápiz en Admin Médicos
-Modificar `src/pages/admin/Medicos.tsx`:
+Se cambiará para que cada escritura pase por el formateador:
 
-- Agregar estado local:
-  - `editingMedico`
-  - `dialogOpen`
+```tsx
+<Input
+  value={rut}
+  onChange={(e) => setRut(formatRut(e.target.value))}
+  maxLength={12}
+  placeholder="12.345.678-9"
+  required
+/>
+```
 
-- Al hacer clic en el lápiz:
-  - Guardar el médico seleccionado en `editingMedico`
-  - Abrir el diálogo con sus datos
+Así se aplica automáticamente en Administrador y Mesón, porque ambos usan el mismo componente `NuevoPacienteDialog`.
 
-- Al guardar:
-  - Si hay `editingMedico`, llamar `updateMedico`
-  - Si no hay `editingMedico`, llamar `addMedico`
+### 3. Cambiar teléfono a prefijo fijo `+569`
 
-- Al cerrar el diálogo:
-  - Limpiar `editingMedico`
+Modificar el estado inicial de teléfono:
 
-### 4. Mantener el diseño actual
-No cambiar colores ni estructura visual del panel.
-El lápiz seguirá siendo el botón actual, pero ahora abrirá el formulario de edición.
+```ts
+const PHONE_PREFIX = "+569";
+const [telefono, setTelefono] = useState(PHONE_PREFIX);
+```
 
-## Resultado esperado
-El admin podrá hacer clic en el lápiz de cualquier médico, corregir nombre, especialidad o email, guardar cambios y ver la tabla actualizada inmediatamente.
+Crear una función `formatPhone(value)` que:
 
-## Verificación
+- Mantenga siempre el prefijo `+569`.
+- Elimine todo lo que no sea número después del prefijo.
+- Permita máximo 9 dígitos adicionales.
+- Devuelva el teléfono en formato simple:
+
+```text
++569123456789
+```
+
+Reglas:
+
+```text
+Prefijo fijo: +569
+Dígitos ingresables: 9
+Largo final máximo: 13 caracteres
+```
+
+El input quedará con:
+
+```tsx
+<Input
+  value={telefono}
+  onChange={(e) => setTelefono(formatPhone(e.target.value))}
+  maxLength={13}
+  placeholder="+569123456789"
+  required
+/>
+```
+
+### 4. Evitar que el usuario borre el prefijo
+
+Agregar lógica para que si el usuario intenta borrar todo el campo, el valor vuelva a `+569`.
+
+También se puede usar `onFocus` para asegurar que el campo nunca quede vacío:
+
+```tsx
+onFocus={() => {
+  if (!telefono.startsWith("+569")) setTelefono("+569");
+}}
+```
+
+### 5. Validar antes de crear paciente
+
+Antes de llamar a `addPaciente`, validar:
+
+#### RUT
+- Largo máximo 12.
+- Debe tener guion cuando ya esté completo.
+- Solo debe contener números, puntos, guion y K.
+
+#### Teléfono
+- Debe comenzar con `+569`.
+- Debe tener exactamente 9 dígitos después del prefijo.
+- Si no cumple, mostrar toast de error y no crear paciente.
+
+Mensaje sugerido:
+
+```text
+RUT inválido
+Ingrese un RUT válido con formato 12.345.678-9.
+```
+
+```text
+Teléfono inválido
+Ingrese 9 dígitos después del prefijo +569.
+```
+
+### 6. Mantener compatibilidad con Admin y Mesón
+
+No se modificarán `AdminPacientes.tsx` ni `MesonPacientes.tsx` salvo que sea necesario, porque ambos ya reutilizan:
+
+```tsx
+<NuevoPacienteDialog />
+```
+
+Por lo tanto el cambio impactará automáticamente en ambos paneles.
+
+### 7. Ajustar reseteo del formulario
+
+Actualmente al guardar se limpia teléfono con string vacío.
+
+Se cambiará para resetearlo a:
+
+```ts
+setTelefono("+569");
+```
+
+Así el próximo paciente ya tendrá el prefijo fijo listo.
+
+## Archivos a modificar
+
+- `src/components/admin/NuevoPacienteDialog.tsx`
+
+## Verificación final
+
 Después de implementar:
-1. Entrar al panel admin en `/admin/medicos`.
-2. Crear un médico.
-3. Hacer clic en el lápiz blanco.
-4. Confirmar que el formulario abre con los datos cargados.
-5. Cambiar nombre, especialidad o email.
-6. Guardar cambios.
-7. Confirmar que la fila de la tabla se actualiza correctamente.
+
+1. Entrar al panel Administrador.
+2. Ir a Pacientes.
+3. Hacer clic en “Nuevo Paciente”.
+4. Escribir un RUT sin puntos ni guion.
+5. Confirmar que se formatea automáticamente.
+6. Confirmar que no permite superar 12 caracteres formateados.
+7. Confirmar que el teléfono siempre mantiene `+569`.
+8. Confirmar que solo deja ingresar 9 dígitos después del prefijo.
+9. Crear paciente y verificar que se guarda con RUT y teléfono formateados.
+10. Repetir el mismo flujo desde Mesón > Pacientes.
