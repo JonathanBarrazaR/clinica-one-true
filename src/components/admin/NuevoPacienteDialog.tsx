@@ -77,9 +77,17 @@ const NuevoPacienteDialog = ({ open, onOpenChange, onSubmit, initialData }: Prop
       return;
     }
 
+    if (initialData && onSubmit) {
+      onSubmit({ nombre, rut, telefono, email });
+      toast({ title: "Paciente actualizado", description: `${nombre} ha sido actualizado.` });
+      setNombre(""); setRut(""); setTelefono(PHONE_PREFIX); setEmail(""); setIniciarTriage(false);
+      onOpenChange(false);
+      return;
+    }
+
     if (onSubmit) {
       onSubmit({ nombre, rut, telefono, email });
-      toast({ title: initialData ? "Paciente actualizado" : "Paciente creado", description: `${nombre} ha sido ${initialData ? "actualizado" : "registrado"}.` });
+      toast({ title: "Paciente creado", description: `${nombre} ha sido registrado.` });
       setNombre(""); setRut(""); setTelefono(PHONE_PREFIX); setEmail(""); setIniciarTriage(false);
       onOpenChange(false);
       return;

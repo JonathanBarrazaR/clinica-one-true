@@ -9,7 +9,7 @@ import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAppStore, Paciente } from "@/stores/appStore";
 
 const AdminPacientes = () => {
-  const { pacientes, updatePaciente, deletePaciente } = useAppStore();
+  const { pacientes, addPaciente, updatePaciente, deletePaciente } = useAppStore();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPaciente, setEditingPaciente] = useState<Paciente | null>(null);
@@ -20,7 +20,11 @@ const AdminPacientes = () => {
   );
 
   const handleSubmit = (data: { nombre: string; rut: string; telefono: string; email: string }) => {
-    if (editingPaciente) updatePaciente(editingPaciente.id, data);
+    if (editingPaciente) {
+      updatePaciente(editingPaciente.id, data);
+    } else {
+      addPaciente({ ...data, triageResult: null });
+    }
     setEditingPaciente(null);
   };
 
