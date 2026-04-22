@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getUserRoles } from "@/lib/consultasSupabase";
 import { useSessionStore } from "@/stores/sessionStore";
+import type { User as SupaUser } from "@supabase/supabase-js";
 
 interface User {
   id: string;
@@ -12,19 +15,22 @@ interface AuthContextType {
   roles: string[];
   isLoading: boolean;
   hasRole: (role: string) => boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<string[]>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const MOCK_USERS = [
-  { id: "1", email: "admin@cliniaone.com", password: "admin123", name: "Admin CliniaONE", roles: ["admin"] },
-  { id: "2", email: "meson@cliniaone.com", password: "meson123", name: "Mesón CliniaONE", roles: ["meson"] },
-];
-
 const SESSION_KEY = "cliniaone_current_session";
+
+function mapUser(su: SupaUser): User {
+  return {
+    id: su.id,
+    email: su.email ?? "",
+    name: (su.user_metadata?.full_name as string) ?? su.email ?? "",
+  };
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -32,17 +38,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { startSession, endSession, load } = useSessionStore();
 
+  // Bootstrap: listen to auth state changes
   useEffect(() => {
     load();
-    const stored = localStorage.getItem("cliniaone_user");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setUser(parsed.user);
-      setRoles(parsed.roles);
-    }
-    setIsLoading(false);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          const mapped = mapUser(session.user);
+          setUser(mapped);
+          const userRoles = await getUserRoles(session.user.id);
+          setRoles(userRoles);
+        } else {
+          setUser(null);
+          setRoles([]);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // Initial session check
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const mapped = mapUser(session.user);
+        setUser(mapped);
+        const userRoles = await getUserRoles(session.user.id);
+        setRoles(userRoles);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  // End session tracking on unload
   useEffect(() => {
     const handler = () => {
       const sid = localStorage.getItem(SESSION_KEY);
@@ -52,33 +81,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener("beforeunload", handler);
   }, [endSession]);
 
-  const signIn = async (email: string, password: string) => {
-    const found = MOCK_USERS.find((u) => u.email === email && u.password === password);
-    if (!found) throw new Error("Credenciales inválidas");
-    const userData = { id: found.id, email: found.email, name: found.name };
-    setUser(userData);
-    setRoles(found.roles);
-    localStorage.setItem("cliniaone_user", JSON.stringify({ user: userData, roles: found.roles }));
-    const sid = startSession({ userId: found.id, email: found.email, role: found.roles[0] });
+  const signIn = async (email: string, password: string): Promise<string[]> => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+
+    const mapped = mapUser(data.user);
+    setUser(mapped);
+
+    const userRoles = await getUserRoles(data.user.id);
+    setRoles(userRoles);
+
+    // Session tracking
+    const sid = startSession({ userId: data.user.id, email, role: userRoles[0] ?? "meson" });
     localStorage.setItem(SESSION_KEY, sid);
+
+    return userRoles;
   };
 
-  const signUp = async (email: string, _password: string, name: string) => {
-    const userData = { id: Date.now().toString(), email, name };
-    setUser(userData);
-    setRoles(["meson"]);
-    localStorage.setItem("cliniaone_user", JSON.stringify({ user: userData, roles: ["meson"] }));
-    const sid = startSession({ userId: userData.id, email, role: "meson" });
-    localStorage.setItem(SESSION_KEY, sid);
+  const signUp = async (email: string, password: string, name: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
+    if (error) throw new Error(error.message);
   };
 
-  const signOut = () => {
+  const signOut = async () => {
     const sid = localStorage.getItem(SESSION_KEY);
     if (sid) endSession(sid);
     localStorage.removeItem(SESSION_KEY);
     setUser(null);
     setRoles([]);
-    localStorage.removeItem("cliniaone_user");
+    await supabase.auth.signOut();
   };
 
   const hasRole = (role: string) => roles.includes(role);
