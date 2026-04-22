@@ -24,11 +24,19 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await signIn(loginEmail, loginPassword);
+      const userRoles = await signIn(loginEmail, loginPassword);
       toast({ title: "Bienvenido", description: "Inicio de sesión exitoso" });
-      navigate("/");
-    } catch {
-      toast({ title: "Error", description: "Credenciales inválidas", variant: "destructive" });
+
+      // Redirigir según rol
+      if (userRoles.includes("admin")) {
+        navigate("/admin");
+      } else if (userRoles.includes("medico")) {
+        navigate("/meson");
+      } else {
+        navigate("/meson");
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Credenciales inválidas", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -39,10 +47,9 @@ const Login = () => {
     setLoading(true);
     try {
       await signUp(signupEmail, signupPassword, signupName);
-      toast({ title: "Cuenta creada", description: "Bienvenido a CliniaONE" });
-      navigate("/");
-    } catch {
-      toast({ title: "Error", description: "No se pudo crear la cuenta", variant: "destructive" });
+      toast({ title: "Cuenta creada", description: "Revisa tu correo para confirmar tu cuenta." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "No se pudo crear la cuenta", variant: "destructive" });
     } finally {
       setLoading(false);
     }
